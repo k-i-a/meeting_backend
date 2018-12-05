@@ -2,13 +2,19 @@
 
 #include <Poco/Net/HTTPRequestHandler.h>
 #include <Poco/Net/HTTPServerResponse.h>
-
+#include <nlohmann/json.hpp>
 
 class RestHandler : public Poco::Net::HTTPRequestHandler {
 	void handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) override {
 		response.setContentType("application/json");
-		HandleRestRequest(request, response);
-	}
+		try {
+			HandleRestRequest(request, response);
+		} catch (const std::exception &e) {
+			nlohmann::json result;
+			result["error"] = e.what();
+			response.send() << result;
+		}
+  }
 
 	virtual void HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) = 0;
 };

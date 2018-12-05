@@ -33,11 +33,6 @@ void to_json(json &j, const Meeting &m) {
 		{"name", m.name},
 		{"description", m.description},
 		{"address", m.address},
-		/*{"signup_description", m.signup_description},
-		{"signup_from_date", m.signup_from_date},
-		{"signup_to_date", m.signup_to_date},
-		{"from_date", m.from_date},
-		{"to_date", m.to_date},*/
 		{"published", m.published}
 	};
 }
@@ -47,11 +42,6 @@ void from_json(const json &j, Meeting &m) {
 	j.at("name").get_to(m.name);
 	j.at("description").get_to(m.description);
 	j.at("address").get_to(m.address);
-	/*j.at("signup_description").get_to(m.signup_description);
-	j.at("signup_from_date").get_to(m.signup_from_date);
-	j.at("signup_to_date").get_to(m.signup_to_date);
-	j.at("from_date").get_to(m.from_date);
-	j.at("to_date").get_to(m.to_date);*/
 	j.at("published").get_to(m.published);
 }
 
@@ -141,13 +131,9 @@ public:
 				into(meeting.published),
 				range(0, 1);
 
-		while (!select.done()) {
-			select.execute();
-			if(row_id) { //чтобы не получать непонятно что, если таблица пустая
+		while (!select.done() && select.execute()) {
 				meeting.id = row_id;
 				list.push_back(meeting);
-			}
-			
 		}
 		session.close();
 		
@@ -208,48 +194,34 @@ void UserMeetingGet::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Po
 void UserMeetingCreate::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
 	
 	nlohmann::json j = nlohmann::json::parse(request.stream());
+	Meeting meeting = j;
+
 	auto &storage = GetStorage();
-	Meeting meeting;
-	//"Грубо" ловим ошибку, если нам прислали не те данные (нехватает поля, не тот тип поля и т.д.)
-	try {
-		Meeting meeting = j;
-		storage.Save(meeting);
-		
-		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
-		response.send() << json(meeting);
-		
-		console_log("Created new meeting:");
-		console_log(json(meeting).dump());
-	} catch(json::exception e) {
-		console_log("Trying to create meeting. Validation error");
-		console_log(j.dump());
-		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_BAD_REQUEST);
-		response.send();
-	}
+	storage.Save(meeting);
+	
+	response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
+	response.send() << json(meeting);
+	
+	console_log("Created new meeting:");
+	console_log(json(meeting).dump());
+
 }
 
 void UserMeetingUpdate::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
-	nlohmann::json j = nlohmann::json::parse(request.stream());
+
 	auto &storage = GetStorage();
-	Meeting meeting;
 
 	if (storage.Exists(m_id)) {
-		//"Грубо" ловим ошибку, если нам прислали не те данные (нехватает поля, не тот тип поля и т.д.)
-		try {
-			Meeting meeting = j;
-			meeting.id = m_id;
-			storage.Save(meeting);
-			response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
-			response.send() << json(meeting);
-			console_log("Updated  meeting #"+std::to_string(m_id)+":");
-			console_log(j.dump());
-		} catch(json::exception e) {
-			console_log("Trying to update meeting. Validation error");
-			console_log(j.dump());
-			response.setStatus(Poco::Net::HTTPServerResponse::HTTP_BAD_REQUEST);
-			response.send();
-			return;
-		}
+
+		nlohmann::json j = nlohmann::json::parse(request.stream());
+		Meeting meeting = j;
+		meeting.id = m_id;
+		storage.Save(meeting);
+		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
+		response.send() << json(meeting);
+		console_log("Updated  meeting #"+std::to_string(m_id)+":");
+		console_log(j.dump());
+
 	} else {
 		console_log("Trying to update meeting #"+std::to_string(m_id)+":");
 		console_log("Not found.");
