@@ -3,6 +3,7 @@
 #include <Poco/Net/HTTPRequestHandler.h>
 #include <Poco/Net/HTTPServerResponse.h>
 #include <nlohmann/json.hpp>
+#include <logger.hpp>
 
 class RestHandler : public Poco::Net::HTTPRequestHandler {
 	void handleRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) override {
@@ -10,9 +11,11 @@ class RestHandler : public Poco::Net::HTTPRequestHandler {
 		try {
 			HandleRestRequest(request, response);
 		} catch (const std::exception &e) {
+			meeting::GetLogger().error(e.what());
 			nlohmann::json result;
 			result["error"] = e.what();
 			response.send() << result;
+			
 		}
   }
 

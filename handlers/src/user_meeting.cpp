@@ -158,10 +158,7 @@ Storage &GetStorage() {
 	static DBStorage storage;
 	return storage;
 }
-// Вывод сообщений в консоль
-void console_log(std::string message){
-	std::cout << message << std::endl;
-}
+
 
 void UserMeetingList::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Poco::Net::HTTPServerResponse &response) {
 	response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
@@ -183,8 +180,8 @@ void UserMeetingGet::HandleRestRequest(Poco::Net::HTTPServerRequest &request, Po
 		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
 		response.send() << json(storage.Get(m_id));
 	} else {
-		console_log("Trying to get meeting #"+std::to_string(m_id)+":");
-		console_log("Not found.");
+		meeting::GetLogger().information("Trying to get meeting #"+std::to_string(m_id)+":");
+		meeting::GetLogger().information("Not found.");
 		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND);
 		response.send();
 	}
@@ -202,8 +199,8 @@ void UserMeetingCreate::HandleRestRequest(Poco::Net::HTTPServerRequest &request,
 	response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
 	response.send() << json(meeting);
 	
-	console_log("Created new meeting:");
-	console_log(json(meeting).dump());
+	meeting::GetLogger().information("Created new meeting:");
+	meeting::GetLogger().information(json(meeting).dump());
 
 }
 
@@ -219,12 +216,12 @@ void UserMeetingUpdate::HandleRestRequest(Poco::Net::HTTPServerRequest &request,
 		storage.Save(meeting);
 		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_OK);
 		response.send() << json(meeting);
-		console_log("Updated  meeting #"+std::to_string(m_id)+":");
-		console_log(j.dump());
+		meeting::GetLogger().information("Updated  meeting #"+std::to_string(m_id)+":");
+		meeting::GetLogger().information(j.dump());
 
 	} else {
-		console_log("Trying to update meeting #"+std::to_string(m_id)+":");
-		console_log("Not found.");
+		meeting::GetLogger().information("Trying to update meeting #"+std::to_string(m_id)+":");
+		meeting::GetLogger().information("Not found.");
 		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND);
 		response.send();
 	}
@@ -240,10 +237,10 @@ void UserMeetingDelete::HandleRestRequest(Poco::Net::HTTPServerRequest &request,
 		storage.Delete(m_id);
 		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_NO_CONTENT);
 		response.send();
-		console_log("Deleted  meeting #"+std::to_string(m_id));
+		meeting::GetLogger().information("Deleted  meeting #"+std::to_string(m_id));
 	} else {
-		console_log("Trying to delete meeting #"+std::to_string(m_id)+":");
-		console_log("Not found.");
+		meeting::GetLogger().information("Trying to delete meeting #"+std::to_string(m_id)+":");
+		meeting::GetLogger().information("Not found.");
 		response.setStatus(Poco::Net::HTTPServerResponse::HTTP_NOT_FOUND);
 		response.send();
 	}

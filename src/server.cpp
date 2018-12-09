@@ -6,6 +6,7 @@
 #include "Poco/Data/Session.h"
 #include "Poco/Data/SQLite/Connector.h"
 #include <data_session_factory.hpp>
+#include <logger.hpp>
 
 namespace {
 
@@ -34,18 +35,9 @@ public:
 int Server::main(const std::vector<std::string> & args) {
 	using namespace Poco::Data::Keywords;
 
-	auto *parameters = new Poco::Net::HTTPServerParams();
-	parameters->setTimeout(10000);
-	parameters->setMaxQueued(100);
-	parameters->setMaxThreads(1);
+	meeting::GetLogger().information("Start Server");
 
-	const Poco::Net::ServerSocket socket(ServerSocket("127.0.0.1", 8080));
-
-	Poco::Net::HTTPServer server(new handlers::Factory(), socket, parameters);
-
-
-    Poco::Data::SQLite::Connector::registerConnector();
-	
+	Poco::Data::SQLite::Connector::registerConnector();
 	auto session = DataSessionFactory::getInstance();
 
 	if (std::find(args.begin(), args.end(), "init-db") != args.end()) {
@@ -63,6 +55,15 @@ int Server::main(const std::vector<std::string> & args) {
 				now;
 	session.close();
 
+	auto *parameters = new Poco::Net::HTTPServerParams();
+	parameters->setTimeout(10000);
+	parameters->setMaxQueued(100);
+	parameters->setMaxThreads(1);
+
+	const Poco::Net::ServerSocket socket(ServerSocket("127.0.0.1", 8080));
+
+	Poco::Net::HTTPServer server(new handlers::Factory(), socket, parameters);
+	
 	server.start();
 	waitForTerminationRequest();
 	server.stopAll();
