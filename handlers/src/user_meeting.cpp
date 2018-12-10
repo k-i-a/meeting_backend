@@ -1,11 +1,11 @@
 #include <Poco/Net/HTTPServerRequest.h>
 #include <Poco/Net/HTTPServerResponse.h>
 #include <handlers.hpp>
-#include <iostream>
 #include <nlohmann/json.hpp>
 #include <Poco/URI.h>
 #include <optional>
 #include <data_session_factory.hpp>
+#include <mutex>
 
 namespace handlers {
 
@@ -59,6 +59,7 @@ public:
 class DBStorage : public Storage {
 public:
 	void Save(Meeting &meeting) override {
+		std::lock_guard<std::mutex> lock{m_mutex};
 		auto session = DataSessionFactory::getInstance();
 		int id;
             if (meeting.id.has_value()) {
@@ -89,6 +90,7 @@ public:
 	}
 
 	void Delete(int id) override {
+		std::lock_guard<std::mutex> lock{m_mutex};
 		auto session = DataSessionFactory::getInstance();
 		Poco::Data::Statement deleteMeeting(session);
 		deleteMeeting << "DELETE FROM meeting WHERE id = ?",
@@ -98,59 +100,56 @@ public:
 	}
 
 	Meeting Get(int id) override {
-
-		Meeting meeting;
+		std::lock_guard<std::mutex> lock{m_mutex};
 		auto session = DataSessionFactory::getInstance();
 		Poco::Data::Statement select(session);
-		select << "SELECT name, description, address, published FROM meeting WHERE id = ?",
-				into(meeting.name),
-				into(meeting.description),
-				into(meeting.address),
-				into(meeting.published),
-				use(id);
-		select.execute();
-		meeting.id = id;
-		session.close();
+		Meeting meeting;
+
+		select << "SELECT "
+					"id, name, description, address, published "
+					"FROM meeting WHERE id=?",
+			use(id),
+			into(meeting.id.emplace()),
+			into(meeting.name),
+			into(meeting.description),
+			into(meeting.address),
+			into(meeting.published),
+			now;
+	
 		return meeting;
             
 	}
 
 	Storage::MeetingList GetList() override {
-		
+		std::lock_guard<std::mutex> lock{m_mutex};
 		auto session = DataSessionFactory::getInstance();
 		Poco::Data::Statement select(session);
 		Storage::MeetingList list;
 		Meeting meeting;
-		int row_id = 0;
-		
-		select << "SELECT id, name, description, address, published FROM meeting",
-				into(row_id),
-				into(meeting.name),
-				into(meeting.description),
-				into(meeting.address),
-				into(meeting.published),
-				range(0, 1);
 
-		while (!select.done() && select.execute()) {
-				meeting.id = row_id;
-				list.push_back(meeting);
+		select << "SELECT id, name, description, address, published FROM meeting",
+			into(meeting.id.emplace()),
+			into(meeting.name),
+			into(meeting.description),
+			into(meeting.address),
+			into(meeting.published),
+			range(0, 1); //  iterate over result set one row at a time
+
+		while (!select.done() && select.execute() > 0) {
+			list.push_back(meeting);
 		}
-		session.close();
-		
 		return list;
 	}
 
 	bool Exists(int id) override {
 		auto session = DataSessionFactory::getInstance();
-		Poco::Data::Statement find(session);
 		int meeting_count = 0;
-		find << "SELECT COUNT(*) FROM meeting WHERE id = ?",
-				into(meeting_count),
-				use(id);
-		find.execute();
-		session.close();
-		return meeting_count != 0;
+		session << "SELECT COUNT(*) FROM meeting WHERE id=?", use(id), into(meeting_count), now;
+		return meeting_count > 0;
 	}
+
+private:
+	std::mutex m_mutex;
 
 };
 

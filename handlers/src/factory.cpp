@@ -2,87 +2,48 @@
 #include <handlers.hpp>
 #include <handlers/error.hpp>
 #include <handlers/factory.hpp>
-#include <Poco/URI.h>
-#include <Poco/NumberParser.h>
+#include <regex>
 
 namespace handlers {
 
 HTTPRequestHandler *Factory::GetMethodHandlers(const std::string &uri) const {
-	
-	Poco::URI uri_parser(uri);
-	std::vector < std::string > segments;
-	uri_parser.getPathSegments(segments);
-	int meeting_id;
-	//  /user/*  route
-	if (segments[0].compare("user") == 0) {
-		if (segments[1].compare("meeting") == 0) { // /user/meeting route
-			if (segments[2].length() == 0) { 
-				return new UserMeetingList();
-			} else if (Poco::NumberParser::tryParse(segments[2],meeting_id)) { // проверям, прислали ли нам id
-				return new UserMeetingGet(meeting_id);
-			}
-		} 
+	if (uri == "/user/meeting") {
+		return new UserMeetingList();
 	}
+	if (std::smatch m; std::regex_match(uri, m, std::regex{R"(/user/meeting/(\d+))"})) {
+		return new UserMeetingGet(std::stoi(m[1]));
+	}
+
 	return nullptr;
 }
 
 HTTPRequestHandler *Factory::PostMethodHandlers(const std::string &uri) const {
-	
-	Poco::URI uri_parser(uri);
-	std::vector < std::string > segments;
-	uri_parser.getPathSegments(segments);
-
-	//  /user/*  route
-	if (segments[0].compare("user") == 0) {
-		if (segments[1].compare("meeting") == 0) { // /user/meeting route
-			return new UserMeetingCreate();
-		} 
+	if (uri == "/user/meeting") {
+		return new UserMeetingCreate();
 	}
 	return nullptr;
 }
 
 HTTPRequestHandler *Factory::PatchMethodHandlers(const std::string &uri) const {
-	
-	Poco::URI uri_parser(uri);
-	std::vector < std::string > segments;
-	uri_parser.getPathSegments(segments);
-	int meeting_id;
-	//  /user/*  route
-	if (segments[0].compare("user") == 0) {
-		if (segments[1].compare("meeting") == 0) { // /user/meeting route
-			if (segments[2].length() != 0 && Poco::NumberParser::tryParse(segments[2],meeting_id)) { // проверям, прислали ли нам id
-				return new UserMeetingUpdate(meeting_id);
-			}
-		} 
+	if (std::smatch m; std::regex_match(uri, m, std::regex{R"(/user/meeting/(\d+))"})) {
+		return new UserMeetingUpdate(std::stoi(m[1]));
 	}
-
 	return nullptr;
 }
 
 HTTPRequestHandler *Factory::DeleteMethodHandlers(const std::string &uri) const {
-	
-	Poco::URI uri_parser(uri);
-	std::vector < std::string > segments;
-	uri_parser.getPathSegments(segments);
-	int meeting_id;
-	//  /user/*  route
-	if (segments[0].compare("user") == 0) {
-		if (segments[1].compare("meeting") == 0) { // /user/meeting route
-			if (segments[2].length() != 0 && Poco::NumberParser::tryParse(segments[2],meeting_id)) { // проверям, прислали ли нам id
-				return new UserMeetingDelete(meeting_id);
-			}
-		}
+	if (std::smatch m; std::regex_match(uri, m, std::regex{R"(/user/meeting/(\d+))"})) {
+		return new UserMeetingDelete(std::stoi(m[1]));
 	}
-
 	return nullptr;
 }
 
 Poco::Net::HTTPRequestHandler *Factory::createRequestHandler(const Poco::Net::HTTPServerRequest &request) {
 	using Poco::Net::HTTPRequest;
-	
+
 	Poco::Net::HTTPRequestHandler *result = nullptr;
-	const auto method = request.getMethod();
-	const auto uri = request.getURI();
+	const auto &method = request.getMethod();
+	const auto &uri = request.getURI();
 	if (method == HTTPRequest::HTTP_GET) {
 		result = GetMethodHandlers(uri);
 	} else if (method == HTTPRequest::HTTP_POST) {
