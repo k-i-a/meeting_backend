@@ -23,13 +23,18 @@ int Server::main(const std::vector<std::string> & args) {
 		session << "DROP TABLE IF EXISTS meeting;", now;
 		
 	}
-	session << R"(CREATE TABLE IF NOT EXISTS `meeting` (
-					`id`	INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
-					`name`	TEXT,
-					`description`	TEXT,
-					`address`	TEXT,
-					`published`	INTEGER
-				))",
+	session << R"(CREATE TABLE meeting (
+					id INTEGER PRIMARY KEY AUTOINCREMENT,
+					name TEXT UNIQUE NOT NULL,
+					description TEXT NOT NULL,
+					address TEXT NOT NULL,
+					published INTEGER NOT NULL,
+					signup_description TEXT NOT NULL,
+					signup_from_date INTEGER NOT NULL,
+					signup_to_date INTEGER NOT NULL,
+					from_date INTEGER NOT NULL,
+					to_date INTEGER NOT NULL
+					))",
 				now;
 	session.close();
 
